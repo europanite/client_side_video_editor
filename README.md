@@ -1,11 +1,11 @@
-# [Client Side Vite Template](https://github.com/europanite/client_side_vite_template "Client Side Vite Template")
+# [Client Side Video Editor](https://github.com/europanite/client_side_video_editor "Client Side Video Editor")
 
-A Client Side Vite Template.
+A Client Side Video Editor.
 
 ---
 
 ##  🚀 PlayGround
- [Client Side Vite Template](https://europanite.github.io/client_side_vite_template/)
+ [Client Side Video Editor](https://europanite.github.io/client_side_video_editor/)
 
 ---
 
