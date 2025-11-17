@@ -7,7 +7,6 @@ module.exports = {
   testMatch: ["**/__tests__/**/*.test.(ts|tsx)"],
   moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json"],
   moduleNameMapper: {
-    "^ml-xgboost$": "<rootDir>/src/__mocks__/ml-xgboost.ts",
     "\\.(css|less|scss|sass)$": "<rootDir>/src/__mocks__/styleMock.js",
   },
   transform: {
