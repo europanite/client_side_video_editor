@@ -1,11 +1,11 @@
 # [Client Side Video Editor](https://github.com/europanite/client_side_video_editor "Client Side Video Editor")
 
-A Client Side Video Editor.
-
----
+!["web_ui"](./assets/images/web_ui.png)
 
 ##  🚀 PlayGround
  [Client Side Video Editor](https://europanite.github.io/client_side_video_editor/)
+
+A Client Side Video Editor.
 
 ---
 
