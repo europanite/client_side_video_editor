@@ -1,0 +1,39 @@
+{
+  "name": "client-side-xgboost-demo",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:demo": "vite build",
+    "preview": "vite preview --host",
+    "test": "jest",
+    "postinstall": "mkdir -p public/vendor/ml-xgboost && cp node_modules/ml-xgboost/dist/wasm/xgboost.wasm public/vendor/ml-xgboost/"
+  },
+  "dependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@types/react-native-web": "^0.19.2",
+    "chart.js": "^4.5.1",
+    "D": "^1.0.0",
+    "jest": "^30.2.0",
+    "jest-environment-jsdom": "^30.2.0",
+    "ml-cart": "^2.0.1",
+    "ml-xgboost": "^1.1.2",
+    "papaparse": "^5.4.1",
+    "react": "^19.2.0",
+    "react-chartjs-2": "^5.3.1",
+    "react-dom": "^19.2.0",
+    "react-native": "^0.82.1",
+    "react-native-web": "^0.21.2",
+    "test": "^3.3.0",
+    "ts-jest": "^29.4.5",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vite": "^7.2.0"
+  }
+}
