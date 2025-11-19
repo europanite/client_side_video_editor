@@ -45,7 +45,9 @@ const App: FC = () => {
     const loadFfmpeg = async () => {
       try {
         setEngineState("loading-engine");
-        setStatusMessage("Loading video engine (FFmpeg.wasm). This can take a while on the first load...");
+        setStatusMessage(
+          "Loading video engine (FFmpeg.wasm). This can take a while on the first load..."
+        );
 
         await ffmpeg.load();
 
@@ -58,7 +60,9 @@ const App: FC = () => {
         console.error("Failed to load FFmpeg:", error);
         if (!cancelled) {
           setEngineState("error");
-          setStatusMessage("Failed to load FFmpeg. Please check the console and your network.");
+          setStatusMessage(
+            "Failed to load FFmpeg. Please check the console and your network."
+          );
         }
       }
     };
@@ -237,12 +241,24 @@ const App: FC = () => {
     setTrimEnd(Math.max(0, Math.min(t, duration)));
   };
 
+  const repo = "https://github.com/europanite/client_side_video_editor";
+
   return (
     <div className="app-root">
       <header className="app-header">
-        <h1 className="app-title">Client Side Video Editor</h1>
+        <h1 className="app-title">
+          <a
+            href={repo}
+            target="_blank"
+            rel="noreferrer"
+            style={{ color: "inherit", textDecoration: "none" }}
+          >
+            Client Side Video Editor
+          </a>
+        </h1>
         <p className="app-subtitle">
-          Load a video file, choose a start and end time, and export a trimmed MP4 clip.
+          Load a video file, choose a start and end time, and export a trimmed
+          MP4 clip.
         </p>
       </header>
 
@@ -371,7 +387,9 @@ const App: FC = () => {
             onClick={handleExport}
             disabled={!videoFile || !ffmpegReady || engineState === "exporting"}
           >
-            {engineState === "exporting" ? "Exporting..." : "Export Trimmed Clip"}
+            {engineState === "exporting"
+              ? "Exporting..."
+              : "Export Trimmed Clip"}
           </button>
 
           {downloadUrl && (
@@ -390,7 +408,8 @@ const App: FC = () => {
 
       <footer className="app-footer">
         <span>
-          All processing happens inside your browser using FFmpeg.wasm. Large files may take time.
+          All processing happens inside your browser using FFmpeg.wasm. Large
+          files may take time.
         </span>
       </footer>
     </div>
