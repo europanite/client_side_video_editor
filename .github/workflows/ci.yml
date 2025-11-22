@@ -48,8 +48,8 @@ jobs:
           name: coverage-node${{ matrix.node }}
           path: frontend/app/coverage
           if-no-files-found: warn
-  web-export-smoke:
-    name: Expo web export (smoke)
+  web-export:
+    name: Web build
     needs: test
     runs-on: ubuntu-latest
     env:
@@ -57,6 +57,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Use Node 20
         uses: actions/setup-node@v4
         with:
@@ -66,13 +67,13 @@ jobs:
       - name: Install deps
         working-directory: frontend/app
         run: npm ci
-      - name: Build (expo export -p web)
+      - name: Build (npm run build:demo)
         working-directory: frontend/app
-        run: npx expo export -p web
+        run: npm run build:demo
       - name: Upload dist (preview artifact)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: expo-web-dist
+          name: web-dist
           path: frontend/app/dist
           if-no-files-found: error
