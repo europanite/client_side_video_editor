@@ -1,9 +1,9 @@
-import React, {
+import {
   useEffect,
   useRef,
   useState,
-  ChangeEvent,
-  FC,
+  type ChangeEvent,
+  type FC,
 } from "react";
 
 // Use the new FFmpeg class API (v12+)
@@ -200,6 +200,13 @@ const App: FC = () => {
 
       // Read the result
       const fileData = await ffmpeg.readFile("output.mp4"); // Uint8Array (FileData)
+
+      // Normalize to a plain Uint8Array so Blob typing works with strict TS
+      const outputData: Uint8Array =
+        fileData instanceof Uint8Array
+          ? new Uint8Array(fileData)
+          : new TextEncoder().encode(String(fileData));
+
       const outputData =
         fileData instanceof Uint8Array
           ? fileData
