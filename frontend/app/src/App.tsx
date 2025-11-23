@@ -1,9 +1,9 @@
-import {
+import React, {
   useEffect,
   useRef,
   useState,
-  type ChangeEvent,
-  type FC,
+  ChangeEvent,
+  FC,
 } from "react";
 
 // Use the new FFmpeg class API (v12+)
@@ -20,6 +20,59 @@ type ExportState =
   | "done"
   | "error";
 
+type OutputFormat = "same-as-input" | "mp4" | "webm";
+
+const DEFAULT_OUTPUT_FORMAT: OutputFormat = "same-as-input";
+
+/**
+ * Extract a simple, lowercase file extension from a filename.
+ * For example: "video.MP4" -> "mp4"
+ */
+function getFileExtension(filename: string | null | undefined): string | null {
+  if (!filename) return null;
+  const parts = filename.split(".");
+  if (parts.length < 2) return null;
+  return parts[parts.length - 1].toLowerCase();
+}
+
+/**
+ * Map a file extension to a reasonable MIME type for the download Blob.
+ */
+function getMimeTypeForExtension(ext: string): string {
+  switch (ext) {
+    case "mp4":
+      return "video/mp4";
+    case "webm":
+      return "video/webm";
+    default:
+      // Fallback for unknown extensions
+      return "application/octet-stream";
+  }
+}
+
+/**
+ * Decide which extension to use for the output file based on:
+ * - the selected output format
+ * - the original input extension
+ */
+function resolveOutputExtension(
+  format: OutputFormat,
+  inputExt: string | null
+): string {
+  if (format === "same-as-input" && inputExt) {
+    return inputExt;
+  }
+  switch (format) {
+    case "mp4":
+      return "mp4";
+    case "webm":
+      return "webm";
+    default:
+      // Fallback if somehow unknown: use mp4
+      return "mp4";
+  }
+}
+
 const App: FC = () => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -28,6 +81,7 @@ const App: FC = () => {
 
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [inputExtension, setInputExtension] = useState<string | null>(null);
 
   const [duration, setDuration] = useState<number>(0);
   const [trimStart, setTrimStart] = useState<number>(0);
@@ -37,6 +91,10 @@ const App: FC = () => {
     "Loading video engine..."
   );
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+
+  const [outputFormat, setOutputFormat] = useState<OutputFormat>(
+    DEFAULT_OUTPUT_FORMAT
+  );
 
   // Load FFmpeg.wasm once on mount
   useEffect(() => {
@@ -91,12 +149,19 @@ const App: FC = () => {
     }
 
     const url = URL.createObjectURL(file);
+    const ext = getFileExtension(file.name);
+
     setVideoFile(file);
     setVideoUrl(url);
+    setInputExtension(ext);
 
     setTrimStart(0);
     setTrimEnd(0);
     setDuration(0);
+
+    // Reset output format to the default (same as input)
+    setOutputFormat(DEFAULT_OUTPUT_FORMAT);
+
     setStatusMessage("Video loaded. Waiting for metadata...");
   };
 
@@ -118,15 +183,19 @@ const App: FC = () => {
   const handleTrimStartChange = (event: ChangeEvent<HTMLInputElement>) => {
     const value = Number(event.target.value);
     if (!Number.isFinite(value)) return;
-
     setTrimStart(Math.max(0, Math.min(value, duration)));
   };
 
   const handleTrimEndChange = (event: ChangeEvent<HTMLInputElement>) => {
     const value = Number(event.target.value);
     if (!Number.isFinite(value)) return;
-
     setTrimEnd(Math.max(0, Math.min(value, duration)));
+  };
+
+  /** Handle output format selection */
+  const handleOutputFormatChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    const value = event.target.value as OutputFormat;
+    setOutputFormat(value);
   };
 
   /** Helper: format seconds to mm:ss */
@@ -159,51 +228,70 @@ const App: FC = () => {
       return;
     }
 
+    // Decide input / output extensions
+    const inputExt = inputExtension || "mp4";
+    const outputExt = resolveOutputExtension(outputFormat, inputExtension);
+
+    const inputName = `input.${inputExt}`;
+    const outputName = `output.${outputExt}`;
+
     try {
       setEngineState("exporting");
-      setStatusMessage("Exporting trimmed clip... This can take some time.");
+      setStatusMessage(
+        `Exporting trimmed clip as .${outputExt}... This can take some time.`
+      );
 
       // Clean previous outputs if any (new API uses deleteFile)
       try {
-        await ffmpeg.deleteFile("input.mp4");
+        await ffmpeg.deleteFile(inputName);
       } catch {
-        // ignore
+        // ignore if it does not exist
       }
       try {
-        await ffmpeg.deleteFile("output.mp4");
+        await ffmpeg.deleteFile(outputName);
       } catch {
-        // ignore
+        // ignore if it does not exist
       }
 
       // Write input file into FFmpeg virtual FS
       const inputBuffer = await videoFile.arrayBuffer();
       const inputData = new Uint8Array(inputBuffer);
-      await ffmpeg.writeFile("input.mp4", inputData);
+      await ffmpeg.writeFile(inputName, inputData);
 
       // Prepare arguments
       const startArg = trimStart.toFixed(2);
       const lengthSeconds = trimEnd - trimStart;
       const lengthArg = lengthSeconds.toFixed(2);
 
-      // -ss: start, -t: duration, -c copy: avoid re-encoding when possible
-      await ffmpeg.exec([
+      // Base args: trim segment
+      const args: string[] = [
         "-ss",
         startArg,
         "-i",
-        "input.mp4",
+        inputName,
         "-t",
         lengthArg,
-        "-c",
-        "copy",
-        "output.mp4",
-      ]);
+      ];
+
+      // If the container does not change, we can try stream copy to avoid re-encode
+      if (outputExt === inputExt) {
+        args.push("-c", "copy");
+      }
+
+      // Finally, output file
+      args.push(outputName);
+
+      await ffmpeg.exec(args);
 
       // Read the result
-      const fileData = (await ffmpeg.readFile("output.mp4")) as Uint8Array;
-      
-      const arrayBuffer = fileData.slice().buffer as ArrayBuffer;
-      
-      const blob = new Blob([arrayBuffer], { type: "video/mp4" });
+      const fileData = await ffmpeg.readFile(outputName); // Uint8Array (FileData)
+      const outputData =
+        fileData instanceof Uint8Array
+          ? fileData
+          : new TextEncoder().encode(String(fileData));
+
+      const mimeType = getMimeTypeForExtension(outputExt);
+      const blob = new Blob([outputData], { type: mimeType });
 
       const url = URL.createObjectURL(blob);
 
@@ -212,11 +300,13 @@ const App: FC = () => {
       }
       setDownloadUrl(url);
       setEngineState("done");
-      setStatusMessage("Export finished. You can download the trimmed clip.");
+      setStatusMessage(
+        `Export finished. You can download the trimmed clip as .${outputExt}.`
+      );
 
       // Clean up FS
-      await ffmpeg.deleteFile("input.mp4");
-      await ffmpeg.deleteFile("output.mp4");
+      await ffmpeg.deleteFile(inputName);
+      await ffmpeg.deleteFile(outputName);
     } catch (error) {
       console.error("Export failed:", error);
       setEngineState("error");
@@ -242,6 +332,28 @@ const App: FC = () => {
 
   const repo = "https://github.com/europanite/client_side_video_editor";
 
+  // Human-friendly label for the current output format
+  const describeOutputFormat = (): string => {
+    if (!videoFile) return "—";
+    const inputExt = inputExtension || "mp4";
+    switch (outputFormat) {
+      case "same-as-input":
+        return `Same as input (.${inputExt})`;
+      case "mp4":
+        return "MP4 (.mp4)";
+      case "webm":
+        return "WebM (.webm)";
+      default:
+        return "Unknown";
+    }
+  };
+
+  const effectiveOutputExtension = resolveOutputExtension(
+    outputFormat,
+    inputExtension
+  );
+  const downloadFileName = `trimmed_clip.${effectiveOutputExtension}`;
+
   return (
     <div className="app-root">
       <header className="app-header">
@@ -257,7 +369,7 @@ const App: FC = () => {
         </h1>
         <p className="app-subtitle">
           Load a video file, choose a start and end time, and export a trimmed
-          MP4 clip.
+          clip (MP4, WebM etc.). All processing stays in your browser.
         </p>
       </header>
 
@@ -380,6 +492,28 @@ const App: FC = () => {
 
         <section className="panel panel-export">
           <h2 className="panel-title">4. Export</h2>
+
+          <div className="slider-row">
+            <label className="slider-label">Output format</label>
+            <select
+              className="time-input"
+              value={outputFormat}
+              onChange={handleOutputFormatChange}
+              disabled={!videoFile}
+            >
+              <option value="same-as-input">
+                {videoFile
+                  ? `Same as input (${inputExtension || "mp4"})`
+                  : "Same as input"}
+              </option>
+              <option value="mp4">MP4 (.mp4)</option>
+              <option value="webm">WebM (.webm)</option>
+            </select>
+            <small style={{ fontSize: "0.8rem", color: "#9ca3af" }}>
+              Current selection: {describeOutputFormat()}
+            </small>
+          </div>
+
           <button
             className="btn btn-primary"
             type="button"
@@ -396,9 +530,9 @@ const App: FC = () => {
               <a
                 className="download-link"
                 href={downloadUrl}
-                download="trimmed_clip.mp4"
+                download={downloadFileName}
               >
-                Download trimmed_clip.mp4
+                Download {downloadFileName}
               </a>
             </div>
           )}
@@ -408,7 +542,7 @@ const App: FC = () => {
       <footer className="app-footer">
         <span>
           All processing happens inside your browser using FFmpeg.wasm. Large
-          files may take time.
+          files and re-encoding between formats may take time.
         </span>
       </footer>
     </div>
