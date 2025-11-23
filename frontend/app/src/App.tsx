@@ -4,6 +4,7 @@ import {
   useState,
   type ChangeEvent,
   type FC,
+  type CSSProperties,
 } from "react";
 
 // Use the new FFmpeg class API (v12+)
@@ -114,21 +115,6 @@ const App: FC = () => {
     setStatusMessage("Ready to edit. Adjust the trim range and export.");
   };
 
-  /** Slider / input change helpers */
-  const handleTrimStartChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const value = Number(event.target.value);
-    if (!Number.isFinite(value)) return;
-
-    setTrimStart(Math.max(0, Math.min(value, duration)));
-  };
-
-  const handleTrimEndChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const value = Number(event.target.value);
-    if (!Number.isFinite(value)) return;
-
-    setTrimEnd(Math.max(0, Math.min(value, duration)));
-  };
-
   /** Helper: format seconds to mm:ss */
   const formatTime = (seconds: number): string => {
     if (!Number.isFinite(seconds) || seconds < 0) seconds = 0;
@@ -138,6 +124,33 @@ const App: FC = () => {
     const mm = m.toString().padStart(2, "0");
     const ss = r.toString().padStart(2, "0");
     return `${mm}:${ss}`;
+  };
+
+  /** Unified slider: change handlers (keep start <= end) */
+  const handleTrimStartChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if (duration <= 0) return;
+    let value = Number(event.target.value);
+    if (!Number.isFinite(value)) return;
+
+    // Clamp to [0, duration] and not beyond current end
+    value = Math.max(0, Math.min(value, duration));
+    if (value > trimEnd) {
+      value = trimEnd;
+    }
+    setTrimStart(value);
+  };
+
+  const handleTrimEndChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if (duration <= 0) return;
+    let value = Number(event.target.value);
+    if (!Number.isFinite(value)) return;
+
+    // Clamp to [0, duration] and not below current start
+    value = Math.max(0, Math.min(value, duration));
+    if (value < trimStart) {
+      value = trimStart;
+    }
+    setTrimEnd(value);
   };
 
   /** Export trimmed clip using FFmpeg.wasm */
@@ -151,7 +164,9 @@ const App: FC = () => {
       return;
     }
     if (duration <= 0) {
-      setStatusMessage("Duration is invalid. Please wait for the video to load.");
+      setStatusMessage(
+        "Duration is invalid. Please wait for the video to load."
+      );
       return;
     }
     if (trimEnd <= trimStart) {
@@ -200,9 +215,7 @@ const App: FC = () => {
 
       // Read the result
       const fileData = (await ffmpeg.readFile("output.mp4")) as Uint8Array;
-      
       const arrayBuffer = fileData.slice().buffer as ArrayBuffer;
-      
       const blob = new Blob([arrayBuffer], { type: "video/mp4" });
 
       const url = URL.createObjectURL(blob);
@@ -228,19 +241,49 @@ const App: FC = () => {
 
   /** Use current video time as trim start */
   const useCurrentAsStart = () => {
-    if (!videoRef.current) return;
-    const t = videoRef.current.currentTime;
-    setTrimStart(Math.max(0, Math.min(t, duration)));
+    if (!videoRef.current || duration <= 0) return;
+    let t = videoRef.current.currentTime;
+    t = Math.max(0, Math.min(t, duration));
+    if (t > trimEnd) {
+      // Do not cross the end handle
+      t = trimEnd;
+    }
+    setTrimStart(t);
   };
 
   /** Use current video time as trim end */
   const useCurrentAsEnd = () => {
-    if (!videoRef.current) return;
-    const t = videoRef.current.currentTime;
-    setTrimEnd(Math.max(0, Math.min(t, duration)));
+    if (!videoRef.current || duration <= 0) return;
+    let t = videoRef.current.currentTime;
+    t = Math.max(0, Math.min(t, duration));
+    if (t < trimStart) {
+      // Do not cross the start handle
+      t = trimStart;
+    }
+    setTrimEnd(t);
   };
 
   const repo = "https://github.com/europanite/client_side_video_editor";
+
+  // --- Track colors ---
+  // 0 to Start: red, Start to End: blue, End to 100: gray
+  const startPercent = duration > 0 ? (trimStart / duration) * 100 : 0;
+  const endPercent = duration > 0 ? (trimEnd / duration) * 100 : 0;
+
+  const rangeTrackStyle: CSSProperties =
+    duration > 0
+      ? ({
+          // Custom CSS variable used in style.css
+          "--track-gradient": `linear-gradient(to right,
+            #4b5563 0%,
+            #4b5563 ${startPercent}%,
+            #6366f1 ${startPercent}%,
+            #6366f1 ${endPercent}%,
+            #4b5563 ${endPercent}%,
+            #4b5563 100%
+          )`,
+        } as CSSProperties)
+      : ({} as CSSProperties);
 
   return (
     <div className="app-root">
@@ -263,11 +306,8 @@ const App: FC = () => {
 
       <main className="app-main">
         <section className="panel panel-input">
-          <h2 className="panel-title">1. Load Video</h2>
           <label className="file-input-label">
-            <span className="file-input-text">
-              Choose a video file (it never leaves your browser)
-            </span>
+            <span className="file-input-text">Choose a video file</span>
             <input
               className="file-input"
               type="file"
@@ -282,7 +322,7 @@ const App: FC = () => {
         </section>
 
         <section className="panel panel-video">
-          <h2 className="panel-title">2. Preview</h2>
+          <h2 className="panel-title">Preview</h2>
           <div className="video-frame">
             {videoUrl ? (
               <video
@@ -306,80 +346,93 @@ const App: FC = () => {
         </section>
 
         <section className="panel panel-controls">
-          <h2 className="panel-title">3. Trim Range</h2>
+          <h2 className="panel-title">Trim Range</h2>
 
-          <div className="slider-row">
-            <label className="slider-label">
-              Start ({formatTime(trimStart)})
-            </label>
-            <input
-              type="range"
-              min={0}
-              max={duration || 0}
-              step={0.1}
-              value={trimStart}
-              onChange={handleTrimStartChange}
-              disabled={!videoFile}
-            />
-            <input
-              className="time-input"
-              type="number"
-              min={0}
-              max={duration || 0}
-              step={0.1}
-              value={Number.isFinite(trimStart) ? trimStart : 0}
-              onChange={handleTrimStartChange}
-              disabled={!videoFile}
-            />
-          </div>
+          {/* Unified dual-handle slider */}
+          <div className="trim-widget">
+            <div className="trim-values-row">
+              <span>Start: {formatTime(trimStart)}</span>
+              <span>End: {formatTime(trimEnd)}</span>
+            </div>
 
-          <div className="slider-row">
-            <label className="slider-label">
-              End ({formatTime(trimEnd)})
-            </label>
-            <input
-              type="range"
-              min={0}
-              max={duration || 0}
-              step={0.1}
-              value={trimEnd}
-              onChange={handleTrimEndChange}
-              disabled={!videoFile}
-            />
-            <input
-              className="time-input"
-              type="number"
-              min={0}
-              max={duration || 0}
-              step={0.1}
-              value={Number.isFinite(trimEnd) ? trimEnd : 0}
-              onChange={handleTrimEndChange}
-              disabled={!videoFile}
-            />
-          </div>
+            <div className="trim-slider-wrapper">
+              {/* Start handle (left) - renders the colored track */}
+              <input
+                className="trim-slider trim-slider-start"
+                type="range"
+                min={0}
+                max={duration || 0}
+                step={0.1}
+                value={trimStart}
+                onChange={handleTrimStartChange}
+                disabled={!videoFile || duration <= 0}
+                style={rangeTrackStyle}
+              />
+              {/* End handle (right) - thumb only, track is transparent */}
+              <input
+                className="trim-slider trim-slider-end"
+                type="range"
+                min={0}
+                max={duration || 0}
+                step={0.1}
+                value={trimEnd}
+                onChange={handleTrimEndChange}
+                disabled={!videoFile || duration <= 0}
+              />
+            </div>
 
-          <div className="helper-row">
-            <button
-              className="btn btn-secondary"
-              type="button"
-              onClick={useCurrentAsStart}
-              disabled={!videoFile}
-            >
-              Use current time as Start
-            </button>
-            <button
-              className="btn btn-secondary"
-              type="button"
-              onClick={useCurrentAsEnd}
-              disabled={!videoFile}
-            >
-              Use current time as End
-            </button>
+            <div className="trim-input-row">
+              <label className="trim-input-group">
+                <span className="trim-input-label">Start (sec)</span>
+                <input
+                  className="time-input"
+                  type="number"
+                  min={0}
+                  max={duration || 0}
+                  step={0.1}
+                  value={Number.isFinite(trimStart) ? trimStart : 0}
+                  onChange={handleTrimStartChange}
+                  disabled={!videoFile || duration <= 0}
+                />
+              </label>
+              <label className="trim-input-group">
+                <span className="trim-input-label">End (sec)</span>
+                <input
+                  className="time-input"
+                  type="number"
+                  min={0}
+                  max={duration || 0}
+                  step={0.1}
+                  value={Number.isFinite(trimEnd) ? trimEnd : 0}
+                  onChange={handleTrimEndChange}
+                  disabled={!videoFile || duration <= 0}
+                />
+              </label>
+            </div>
+
+            <div className="helper-row">
+              <button
+                className="btn btn-secondary"
+                type="button"
+                onClick={useCurrentAsStart}
+                disabled={!videoFile || duration <= 0}
+              >
+                Use current time as Start
+              </button>
+              <button
+                className="btn btn-secondary"
+                type="button"
+                onClick={useCurrentAsEnd}
+                disabled={!videoFile || duration <= 0}
+              >
+                Use current time as End
+              </button>
+            </div>
           </div>
         </section>
 
         <section className="panel panel-export">
-          <h2 className="panel-title">4. Export</h2>
+          <h2 className="panel-title">Export</h2>
           <button
             className="btn btn-primary"
             type="button"
