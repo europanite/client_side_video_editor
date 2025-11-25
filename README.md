@@ -73,7 +73,7 @@ frontend_test
 
 ---
 
-## How It Works (Technical Overview)
+## Technical Overview
 
 ### 1. Tech Stack
 
