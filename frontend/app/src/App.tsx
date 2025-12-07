@@ -574,7 +574,7 @@ const App: FC = () => {
           </a>
         </h1>
         <p className="app-subtitle">
-          Load a video file, set a trim range, drag on the preview to select a crop rectangle, and export a video clip.
+          A Browser-Based Video Editor for Free. No installation, registration, or payment required. 
         </p>
       </header>
 
