@@ -574,7 +574,7 @@ const App: FC = () => {
           </a>
         </h1>
         <p className="app-subtitle">
-          A Browser-Based Video Editor for Free. No installation, registration, or payment required. 
+          A Browser-Based Video Editor for Free. No installation, No registration, or No payment required. 
         </p>
       </header>
 
