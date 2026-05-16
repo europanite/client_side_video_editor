@@ -17,6 +17,18 @@ lang: en
 ![Jest](https://img.shields.io/badge/-jest-%23C21325?style=for-the-badge&logo=jest&logoColor=white)
 ![Vite](https://img.shields.io/badge/vite-%23646CFF.svg?style=for-the-badge&logo=vite&logoColor=white)
 
+<p align="right">
+  <a href="https://europanite.github.io/client_side_video_editor/">🇺🇸 English</a> |
+  <a href="https://europanite.github.io/client_side_video_editor/hi/">🇮🇳 हिंदी</a> |
+  <a href="https://europanite.github.io/client_side_video_editor/ja/">🇯🇵 日本語</a> |
+  <a href="https://europanite.github.io/client_side_video_editor/zh-CN/">🇨🇳 简体中文</a> |
+  <a href="https://europanite.github.io/client_side_video_editor/es/">🇪🇸 Español</a> |
+  <a href="https://europanite.github.io/client_side_video_editor/pt-BR/">🇧🇷 Português (Brasil)</a> |
+  <a href="https://europanite.github.io/client_side_video_editor/ko/">🇰🇷 한국어</a> |
+  <a href="https://europanite.github.io/client_side_video_editor/de/">🇩🇪 Deutsch</a> |
+  <a href="https://europanite.github.io/client_side_video_editor/fr/">🇫🇷 Français</a>
+</p>
+
 !["web_ui"](./assets/images/web_ui.png)
 
  [PlayGround](https://europanite.github.io/client_side_video_editor/)
