@@ -1,3 +1,10 @@
+---
+layout: page
+title: "🇺🇸 English"
+permalink: /
+lang: en
+---
+
 # [Client Side Video Editor](https://github.com/europanite/client_side_video_editor "Client Side Video Editor")
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
