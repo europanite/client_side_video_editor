@@ -45,6 +45,7 @@ jobs:
         with:
           path: ./frontend/app/dist
   deploy:
+    if: github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     environment:
